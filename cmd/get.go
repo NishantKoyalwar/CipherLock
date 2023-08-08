@@ -4,6 +4,8 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"fmt"
 	"log"
 
@@ -26,8 +28,31 @@ var GetCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer closer.Close()
+		cipherText := []byte(value)
+		Encryptionkey := []byte("passphrasewhichneedstobe32bytess")
 
-		fmt.Printf("====> Password is '%s'", value)
+		c, err := aes.NewCipher(Encryptionkey)
+		if err != nil {
+			fmt.Println(err)
+		}
+		gcm, err := cipher.NewGCM(c)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		nonceSize := gcm.NonceSize()
+		if len(cipherText) < nonceSize {
+			fmt.Println(err)
+			return
+		}
+
+		nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]
+		plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Printf("====> Password is '%s'", plainText)
 
 	},
 }

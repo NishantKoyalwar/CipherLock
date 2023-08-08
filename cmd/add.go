@@ -4,7 +4,11 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/cockroachdb/pebble"
@@ -35,7 +39,27 @@ var AddCmd = &cobra.Command{
 		}
 		key := []byte(web)
 		Value := []byte(pas)
-		if err := Db.Set(key, Value, pebble.Sync); err != nil {
+		Encryptionkey := []byte("passphrasewhichneedstobe32bytess")
+
+		//generate a new aes cipher using our encryptionkey
+		c, err := aes.NewCipher(Encryptionkey)
+		if err != nil {
+			fmt.Println(err)
+		}
+		//gcm or galios/counter mode,is a mode of operation for symm key cryptography block ciphers
+
+		gcm, err := cipher.NewGCM(c)
+		if err != nil {
+			fmt.Println(err)
+		}
+		//create a new byte array the size of the nonce which must be passed to seal
+		nonce := make([]byte, gcm.NonceSize())
+
+		if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+			fmt.Println(err)
+		}
+
+		if err := Db.Set(key, gcm.Seal(nonce, nonce, Value, nil), pebble.Sync); err != nil {
 			log.Fatal(err)
 		}
 
